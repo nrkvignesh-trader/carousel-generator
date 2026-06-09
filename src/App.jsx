@@ -340,21 +340,56 @@ function EduSlide4({ d }) {
 ═══════════════════════════════════════════════════════════ */
 function RadarSlide1({ d }) {
   return (
-    <div style={{ ...slideBase, padding: "22px 24px 36px" }}>
+    <div style={{ ...slideBase, padding: "22px 24px 52px", background: "#09090f" }}>
       <GridOverlay />
-      <div style={{ position: "absolute", top: -50, left: -50, width: 220, height: 220, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,158,11,0.14) 0%, transparent 65%)", zIndex: 0 }} />
+      <div style={{ position: "absolute", bottom: -60, left: -60, width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,158,11,0.13) 0%, transparent 60%)", zIndex: 0 }} />
+      <div style={{ position: "absolute", top: -30, right: -30, width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,158,11,0.07) 0%, transparent 65%)", zIndex: 0 }} />
       <CornerMark color={T.gold} />
       <SlideNum n={1} color={T.muted} />
+
       <div style={{ position: "relative", zIndex: 2, textAlign: "left" }}>
         <RadarBadge />
-        <div style={{ marginTop: 20, lineHeight: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.muted, letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>{d.weekLabel}</div>
-          <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: -1.5, color: T.white }}>{d.titleLine1}</div>
-          <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: -1.5, color: T.white }}>{d.titleLine2}</div>
-          <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: -1.5, color: T.gold }}>{d.titleHighlight}</div>
+
+        <div style={{ marginTop: 18, fontSize: 10, fontWeight: 700, color: T.muted, letterSpacing: 2.5, textTransform: "uppercase" }}>{d.weekLabel}</div>
+
+        {/* Big ticker — unique every post */}
+        <div style={{ marginTop: 6, fontSize: 58, fontWeight: 900, letterSpacing: -2.5, lineHeight: 0.92, color: T.gold, textTransform: "uppercase" }}>
+          {d.ticker}
         </div>
-        <div style={{ marginTop: 16, color: T.muted, fontSize: 12, lineHeight: 1.7, fontWeight: 500 }}>{d.subtitle}</div>
+
+        {/* Sector / exchange / timeframe badges */}
+        <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {d.sector && (
+            <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 20, padding: "4px 12px", fontSize: 9.5, fontWeight: 800, color: T.gold, letterSpacing: 0.8 }}>{d.sector}</div>
+          )}
+          {d.exchange && (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: "4px 12px", fontSize: 9.5, fontWeight: 700, color: T.mutedLight }}>{d.exchange}</div>
+          )}
+          {d.timeframe && (
+            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: "4px 12px", fontSize: 9.5, fontWeight: 700, color: T.mutedLight }}>{d.timeframe}</div>
+          )}
+        </div>
+
+        {/* One-line thesis */}
+        <div style={{ marginTop: 50, borderLeft: `3px solid ${T.gold}`, paddingLeft: 14 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: T.white, lineHeight: 1.6 }}>{d.thesis}</div>
+        </div>
+
+        {/* Why I'm watching */}
+        {/* {d.watchReason && (
+          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+            {d.watchReason.map((r, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "9px 12px" }}>
+                <span style={{ fontSize: 15, flexShrink: 0 }}>{r.icon}</span>
+                <div style={{ fontSize: 10.5, fontWeight: 600, color: T.mutedLight, lineHeight: 1.5 }}>{r.text}</div>
+              </div>
+            ))}
+          </div>
+        )} */}
+
+        <div style={{ marginTop: 14, fontSize: 9.5, color: T.muted, fontWeight: 500, lineHeight: 1.5 }}>{d.subtitle}</div>
       </div>
+
       <Brand name={d.brand} color={T.muted} />
       <SaveForLater color={T.muted} />
     </div>
@@ -375,18 +410,20 @@ function RadarSlide2({ d, chartImg }) {
             : <div style={{ textAlign: "center", color: T.muted, fontSize: 12 }}><div style={{ fontSize: 24, marginBottom: 4 }}>📡</div>Upload chart</div>
           }
         </div>
-        <div style={{ display: "flex", gap: 6, marginTop: 9 }}>
-          {[
-            { label: "TICKER", val: d.ticker, color: T.gold },
-            { label: "ZONE",   val: d.entryZone, color: T.mutedLight },
-            { label: "TARGET", val: d.target, color: T.green },
-            { label: "STOP",   val: d.stop, color: T.red },
-          ].map((item, i) => (
-            <div key={i} style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "7px 8px" }}>
-              <div style={{ fontSize: 7.5, color: T.muted, fontWeight: 700, marginBottom: 3, letterSpacing: 1 }}>{item.label}</div>
-              <div style={{ fontSize: 10, fontWeight: 800, color: item.color }}>{item.val}</div>
+        <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "stretch" }}>
+          {/* Ticker chip */}
+          <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 10, padding: "10px 16px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <div style={{ fontSize: 7.5, color: T.muted, fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>TICKER</div>
+            <div style={{ fontSize: 12, fontWeight: 900, color: T.gold, letterSpacing: -0.5 }}>{d.ticker}</div>
+          </div>
+          {/* Zone status */}
+          <div style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 14px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <div style={{ fontSize: 7.5, color: T.muted, fontWeight: 700, letterSpacing: 1, marginBottom: 5 }}>ZONE STATUS</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: d.zoneColor || T.gold, boxShadow: `0 0 8px ${d.zoneColor || T.gold}`, flexShrink: 0 }} />
+              <div style={{ fontSize: 12, fontWeight: 900, color: d.zoneColor || T.gold, letterSpacing: 0.3 }}>{d.zone}</div>
             </div>
-          ))}
+          </div>
         </div>
       </div>
       <Brand name={d.brand} />
@@ -704,9 +741,9 @@ function BdSlide3({ d }) {
         </div>
 
         {/* Quote — kept above brand bar with enough margin */}
-        <div style={{ marginTop: 10, borderLeft: `3px solid ${T.violet}`, paddingLeft: 10 }}>
+        {/* <div style={{ marginTop: 10, borderLeft: `3px solid ${T.violet}`, paddingLeft: 10 }}>
           <div style={{ fontSize: 9.5, fontStyle: "italic", color: T.mutedLight, lineHeight: 1.6 }}>"{d.quote}"</div>
-        </div>
+        </div> */}
       </div>
       <Brand name={d.brand} />
     </div>
@@ -819,9 +856,19 @@ const DEFAULT_EDU = {
 
 const DEFAULT_RADAR = {
   brand: "CANDLEWISE",
-  weekLabel: "Week of Jun 2026", titleLine1: "STOCKS ON", titleLine2: "MY", titleHighlight: "RADAR",
-  subtitle: "Setup I'm watching closely this week. Not a recommendation.",
-  ticker: "DIXON", entryZone: "₹14,200", target: "₹16,800", stop: "₹13,400",
+  weekLabel: "Week of Jun 2026",
+  ticker: "DIXON",
+  sector: "Electronics",
+  exchange: "NSE",
+  timeframe: "Weekly",
+  thesis: "Breaking out of an 8-month base with institutional volume. Classic spring-load setup.",
+  subtitle: "This is a watchlist observation, not a recommendation.",
+  watchReason: [
+    { icon: "📊", text: "8-month base breakout with expanding volume on the weekly chart." },
+    { icon: "🏭", text: "Electronics PLI tailwind — sector getting institutional attention." },
+  ],
+  zone: "ACTIVE BREAKOUT",
+  zoneColor: "#10b981",
   setupPoints: [
     { title: "Breaking out of 8-month base", desc: "Price coiling in a tight range with declining volume — classic spring-load pattern." },
     { title: "Volume surge on weekly candle", desc: "Last week's volume was 3.2x average. Institutions are clearly accumulating." },
@@ -1233,16 +1280,23 @@ export default function App() {
           {template === "radar" && (
             <>
               <SectionHead title="Cover" color="#f59e0b" />
-              <Field label="Week Label"   value={radarData.weekLabel}      onChange={v => updRadar("weekLabel", v)} />
-              <Field label="Title Line 1" value={radarData.titleLine1}     onChange={v => updRadar("titleLine1", v)} />
-              <Field label="Title Line 2" value={radarData.titleLine2}     onChange={v => updRadar("titleLine2", v)} />
-              <Field label="Highlight"    value={radarData.titleHighlight} onChange={v => updRadar("titleHighlight", v)} />
-              <Field label="Subtitle"     value={radarData.subtitle}       onChange={v => updRadar("subtitle", v)} multiline />
-              <SectionHead title="Chart in Focus" color="#f59e0b" />
-              <Field label="Ticker"     value={radarData.ticker}    onChange={v => updRadar("ticker", v)} />
-              <Field label="Entry Zone" value={radarData.entryZone} onChange={v => updRadar("entryZone", v)} />
-              <Field label="Target"     value={radarData.target}    onChange={v => updRadar("target", v)} />
-              <Field label="Stop"       value={radarData.stop}      onChange={v => updRadar("stop", v)} />
+              <Field label="Week Label"  value={radarData.weekLabel}  onChange={v => updRadar("weekLabel", v)} />
+              <Field label="Ticker"      value={radarData.ticker}     onChange={v => updRadar("ticker", v)} />
+              <Field label="Sector"      value={radarData.sector || ""} onChange={v => updRadar("sector", v)} />
+              <Field label="Exchange"    value={radarData.exchange || ""} onChange={v => updRadar("exchange", v)} />
+              <Field label="Timeframe"   value={radarData.timeframe || ""} onChange={v => updRadar("timeframe", v)} />
+              <Field label="Thesis (one-line)"  value={radarData.thesis || ""} onChange={v => updRadar("thesis", v)} multiline />
+              <Field label="Subtitle"    value={radarData.subtitle}   onChange={v => updRadar("subtitle", v)} multiline />
+              <SectionHead title="Chart Slide" color="#f59e0b" />
+              <Field label="Zone Status (e.g. ACTIVE BREAKOUT, WAIT FOR PULLBACK)" value={radarData.zone || ""} onChange={v => updRadar("zone", v)} />
+              <Field label="Zone Colour (hex)" value={radarData.zoneColor || "#10b981"} onChange={v => updRadar("zoneColor", v)} />
+              {/* <SectionHead title="Why I'm Watching (Slide 1 bullets)" color="#f59e0b" />
+              {(radarData.watchReason || []).map((r, i) => (
+                <div key={i} style={{ display: "flex", gap: 6 }}>
+                  <Field label="Icon" value={r.icon} onChange={v => { const a=[...radarData.watchReason]; a[i]={...a[i],icon:v}; updRadar("watchReason",a); }} />
+                  <Field label="Text" value={r.text} onChange={v => { const a=[...radarData.watchReason]; a[i]={...a[i],text:v}; updRadar("watchReason",a); }} multiline />
+                </div>
+              ))} */}
               <SectionHead title="Setup Points" color="#f59e0b" />
               {radarData.setupPoints.map((p, i) => (
                 <div key={i} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: 12, marginBottom: 10 }}>
