@@ -598,15 +598,6 @@ function BdSlide1({ d, chartImg }) {
                 Upload your chart screenshot
               </div>
           }
-          <div style={{
-            position: "absolute", bottom: 0, left: 0, right: 0, height: 44,
-            background: "linear-gradient(to top, rgba(11,12,20,0.92), transparent)",
-            display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 8,
-          }}>
-            <span style={{ fontSize: 8.5, fontWeight: 800, color: T.violet, letterSpacing: 2, textTransform: "uppercase" }}>
-              ← Swipe for the answer →
-            </span>
-          </div>
         </div>
 
         {/* Brief description */}
@@ -614,25 +605,14 @@ function BdSlide1({ d, chartImg }) {
           <div style={{ marginTop: 10, fontSize: 10, color: T.mutedLight, lineHeight: 1.6, fontWeight: 500 }}>{d.hookDesc}</div>
         )}
 
-        {/* Ticker + timeframe row (no difficulty) */}
-        <div style={{ display: "flex", gap: 7, marginTop: 10 }}>
-          <div style={{ background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.3)", borderRadius: 8, padding: "6px 12px", display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 9, fontWeight: 800, color: T.violet, letterSpacing: 1 }}>TICKER</span>
-            <span style={{ fontSize: 11, fontWeight: 900, color: T.white }}>{d.ticker}</span>
-          </div>
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "6px 12px", display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 9, fontWeight: 800, color: T.muted, letterSpacing: 1 }}>TIMEFRAME</span>
-            <span style={{ fontSize: 11, fontWeight: 800, color: T.mutedLight }}>{d.timeframe}</span>
-          </div>
-        </div>
       </div>
       <Brand name={d.brand} />
     </div>
   );
 }
 
-/* Slide 2 — REVEAL: annotated chart with pattern markers */
-function BdSlide2({ d, chartImg }) {
+/* Slide 2 — REVEAL: real ticker chart, no annotations */
+function BdSlide2({ d, chart2Img }) {
   return (
     <div style={{ ...slideBase, padding: "16px 18px 36px", background: "#0b0c14" }}>
       <div style={{ position: "absolute", top: -40, right: -40, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(139,92,246,0.14) 0%, transparent 65%)", zIndex: 0 }} />
@@ -642,44 +622,28 @@ function BdSlide2({ d, chartImg }) {
       <div style={{ position: "relative", zIndex: 2 }}>
         <BreakdownBadge />
         <div style={{ marginTop: 8, fontSize: 14, fontWeight: 900, letterSpacing: -0.3 }}>
-          THE <span style={{ color: T.violet }}>{d.patternName}</span> REVEALED
+          REAL <span style={{ color: T.violet }}>EXAMPLE</span>
         </div>
 
-        {/* Annotated chart */}
+        {/* Real ticker chart — clean, no overlays */}
         <div style={{
           marginTop: 8, borderRadius: 10, overflow: "hidden",
-          height: 200, background: T.surface,
+          height: 210, background: T.surface,
           border: `1px solid rgba(139,92,246,0.3)`,
-          display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
+          display: "flex", alignItems: "center", justifyContent: "center",
         }}>
-          {chartImg
-            ? <img src={chartImg} alt="chart" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-            : <div style={{ textAlign: "center", color: T.muted, fontSize: 11 }}><div style={{ fontSize: 24, marginBottom: 4 }}>📈</div>Chart renders here</div>
+          {chart2Img
+            ? <img src={chart2Img} alt="chart" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            : <div style={{ textAlign: "center", color: T.muted, fontSize: 11 }}><div style={{ fontSize: 24, marginBottom: 4 }}>📈</div>Upload real ticker chart</div>
           }
-          {/* Floating annotation badges — positioned by user config */}
-          {d.annotations.map((ann, i) => (
-            <div key={i} style={{
-              position: "absolute",
-              top: ann.top != null ? `${ann.top}%` : undefined,
-              bottom: ann.bottom != null ? `${ann.bottom}%` : undefined,
-              left: ann.left != null ? `${ann.left}%` : undefined,
-              right: ann.right != null ? `${ann.right}%` : undefined,
-              background: ann.color === "green"  ? "rgba(16,185,129,0.9)"
-                        : ann.color === "red"    ? "rgba(239,68,68,0.9)"
-                        : ann.color === "gold"   ? "rgba(245,158,11,0.9)"
-                        :                          "rgba(139,92,246,0.9)",
-              borderRadius: 5, padding: "2px 7px",
-              fontSize: 8, fontWeight: 800, color: T.white, whiteSpace: "nowrap",
-            }}>{ann.label}</div>
-          ))}
         </div>
 
-        {/* Pattern signature stats row */}
+        {/* Ticker + pattern + timeframe stats */}
         <div style={{ display: "flex", gap: 6, marginTop: 9 }}>
           {[
-            { label: "PATTERN",    val: d.patternName,    color: T.violet },
-            { label: "AVG MOVE",   val: d.avgMove,        color: T.gold },
-            { label: "TIMEFRAME",  val: d.timeframe,      color: T.mutedLight },
+            { label: "TICKER",    val: d.ticker,      color: T.violet },
+            { label: "PATTERN",   val: d.patternName, color: T.gold },
+            { label: "TIMEFRAME", val: d.timeframe,   color: T.mutedLight },
           ].map((item, i) => (
             <div key={i} style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 8, padding: "7px 6px" }}>
               <div style={{ fontSize: 7, color: T.muted, fontWeight: 700, marginBottom: 3, letterSpacing: 0.8 }}>{item.label}</div>
@@ -1063,18 +1027,28 @@ export default function App() {
   const [tab, setTab]                 = useState("preview");
   const [activeSlide, setActiveSlide] = useState(0);
   const [chartImg, setChartImg]       = useState(null);
+  const [chart2Img, setChart2Img]     = useState(null);
   const [eduData, setEduData]         = useState(DEFAULT_EDU);
   const [radarData, setRadarData]     = useState(DEFAULT_RADAR);
   const [reviewData, setReviewData]   = useState(DEFAULT_REVIEW);
   const [bdData, setBdData]           = useState(DEFAULT_BREAKDOWN);
   const [ccData, setCcData]           = useState(DEFAULT_CONCEPT);
-  const fileRef = useRef();
+  const fileRef  = useRef();
+  const file2Ref = useRef();
 
   const handleChartUpload = e => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = ev => setChartImg(ev.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleChart2Upload = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => setChart2Img(ev.target.result);
     reader.readAsDataURL(file);
   };
 
@@ -1102,7 +1076,7 @@ export default function App() {
     ];
     if (template === "breakdown") return [
       <BdSlide1 d={bdData} chartImg={chartImg} />,
-      <BdSlide2 d={bdData} chartImg={chartImg} />,
+      <BdSlide2 d={bdData} chart2Img={chart2Img} />,
       <BdSlide3 d={bdData} />,
     ];
     // concept
@@ -1231,7 +1205,7 @@ export default function App() {
         <div style={{ padding: "20px", maxWidth: 560, margin: "0 auto" }}>
 
           {/* Chart upload — shown for templates that use a chart */}
-          {["edu","radar","review","breakdown"].includes(template) && (
+          {["edu","radar","review"].includes(template) && (
             <div style={{ background: T.surface, border: `2px dashed ${T.borderLight}`, borderRadius: 14, padding: 18, marginBottom: 20, textAlign: "center" }}>
               <div style={{ fontWeight: 800, fontSize: 12, marginBottom: 10, color: currentAccent }}>📈 Chart Screenshot</div>
               <input ref={fileRef} type="file" accept="image/*" onChange={handleChartUpload} style={{ display: "none" }} />
@@ -1239,6 +1213,28 @@ export default function App() {
                 {chartImg ? "🔄 Replace Chart" : "📂 Upload Chart"}
               </button>
               {chartImg && <img src={chartImg} alt="preview" style={{ marginTop: 12, maxHeight: 90, borderRadius: 8, display: "block", margin: "12px auto 0", maxWidth: "100%", objectFit: "contain" }} />}
+            </div>
+          )}
+
+          {/* Breakdown: two separate chart uploads */}
+          {template === "breakdown" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
+              <div style={{ background: T.surface, border: `2px dashed ${T.borderLight}`, borderRadius: 14, padding: 16, textAlign: "center" }}>
+                <div style={{ fontWeight: 800, fontSize: 12, marginBottom: 8, color: currentAccent }}>🔍 Slide 1 — Sample Pattern Chart</div>
+                <input ref={fileRef} type="file" accept="image/*" onChange={handleChartUpload} style={{ display: "none" }} />
+                <button onClick={() => fileRef.current.click()} style={{ background: currentAccent, border: "none", color: T.white, borderRadius: 8, padding: "7px 16px", cursor: "pointer", fontWeight: 700, fontSize: 11, fontFamily: T.font }}>
+                  {chartImg ? "🔄 Replace" : "📂 Upload"}
+                </button>
+                {chartImg && <img src={chartImg} alt="preview" style={{ marginTop: 10, maxHeight: 80, borderRadius: 8, display: "block", margin: "10px auto 0", maxWidth: "100%", objectFit: "contain" }} />}
+              </div>
+              <div style={{ background: T.surface, border: `2px dashed ${T.borderLight}`, borderRadius: 14, padding: 16, textAlign: "center" }}>
+                <div style={{ fontWeight: 800, fontSize: 12, marginBottom: 8, color: currentAccent }}>📈 Slide 2 — Real Ticker Chart</div>
+                <input ref={file2Ref} type="file" accept="image/*" onChange={handleChart2Upload} style={{ display: "none" }} />
+                <button onClick={() => file2Ref.current.click()} style={{ background: currentAccent, border: "none", color: T.white, borderRadius: 8, padding: "7px 16px", cursor: "pointer", fontWeight: 700, fontSize: 11, fontFamily: T.font }}>
+                  {chart2Img ? "🔄 Replace" : "📂 Upload"}
+                </button>
+                {chart2Img && <img src={chart2Img} alt="preview" style={{ marginTop: 10, maxHeight: 80, borderRadius: 8, display: "block", margin: "10px auto 0", maxWidth: "100%", objectFit: "contain" }} />}
+              </div>
             </div>
           )}
 
@@ -1346,24 +1342,13 @@ export default function App() {
           {template === "breakdown" && (
             <>
               <SectionHead title="Slide 1 — Hook" color="#8b5cf6" />
-              <Field label="Ticker"     value={bdData.ticker}        onChange={v => updBd("ticker", v)} />
-              <Field label="Timeframe"  value={bdData.timeframe}     onChange={v => updBd("timeframe", v)} />
               <Field label={`Hook Question (use \\n to split lines)`} value={bdData.hookQuestion} onChange={v => updBd("hookQuestion", v)} multiline />
               <Field label="Brief Description" value={bdData.hookDesc || ""} onChange={v => updBd("hookDesc", v)} multiline />
 
-              <SectionHead title="Slide 2 — Reveal" color="#8b5cf6" />
-              <Field label="Pattern Name"  value={bdData.patternName} onChange={v => updBd("patternName", v)} />
-              <Field label="Avg Move"      value={bdData.avgMove}     onChange={v => updBd("avgMove", v)} />
-              <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: 12, marginBottom: 10 }}>
-                <div style={{ fontSize: 10, color: "#8b5cf6", fontWeight: 800, marginBottom: 8 }}>Chart Annotations (positioned as % of chart area)</div>
-                {bdData.annotations.map((ann, i) => (
-                  <div key={i} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: i < bdData.annotations.length-1 ? `1px solid ${T.border}` : "none" }}>
-                    <div style={{ fontSize: 9, color: T.muted, fontWeight: 700, marginBottom: 6 }}>Annotation {i + 1}</div>
-                    <Field label="Label text" value={ann.label} onChange={v => { const a=[...bdData.annotations]; a[i]={...a[i],label:v}; updBd("annotations",a); }} />
-                    <Field label="Color (green/red/gold/violet)" value={ann.color} onChange={v => { const a=[...bdData.annotations]; a[i]={...a[i],color:v}; updBd("annotations",a); }} />
-                  </div>
-                ))}
-              </div>
+              <SectionHead title="Slide 2 — Real Example" color="#8b5cf6" />
+              <Field label="Ticker"       value={bdData.ticker}      onChange={v => updBd("ticker", v)} />
+              <Field label="Timeframe"    value={bdData.timeframe}   onChange={v => updBd("timeframe", v)} />
+              <Field label="Pattern Name" value={bdData.patternName} onChange={v => updBd("patternName", v)} />
 
               <SectionHead title="Slide 3 — Playbook" color="#8b5cf6" />
               <Field label="Entry Trigger" value={bdData.entryTrigger} onChange={v => updBd("entryTrigger", v)} multiline />
