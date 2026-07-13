@@ -44,6 +44,14 @@ const T = {
 const SW = 440;
 const SH = 440;
 
+/* Radar Reel — separate vertical export canvas (1080x1920), independent of
+   the 440x440 carousel canvas above. Does not affect carousel categories. */
+const REEL_W = 1080;
+const REEL_H = 1920;
+const REEL_PREVIEW_SCALE = 0.32; // on-screen preview size = REEL_W/H * this
+const RW = Math.round(REEL_W * REEL_PREVIEW_SCALE);
+const RH = Math.round(REEL_H * REEL_PREVIEW_SCALE);
+
 const slideBase = {
   width: SW, height: SH,
   fontFamily: T.font,
@@ -56,6 +64,21 @@ const slideBase = {
   color: T.white,
   border: `1px solid ${T.border}`,
   textAlign: "left"
+};
+
+/* Base style for Radar Reel scenes — rendered at full 1080x1920 and scaled
+   down for on-screen preview via transform, so html2canvas always captures
+   the true 1080x1920 layout. */
+const reelSlideBase = {
+  width: REEL_W, height: REEL_H,
+  fontFamily: T.font,
+  background: "#09090f",
+  position: "relative",
+  overflow: "hidden",
+  boxSizing: "border-box",
+  flexShrink: 0,
+  color: T.white,
+  textAlign: "left",
 };
 
 /* ─────────────────────────────────────────────
@@ -130,6 +153,22 @@ function ConceptBadge() {
   return (
     <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(6,182,212,0.12)", border: "1px solid rgba(6,182,212,0.35)", borderRadius: 20, padding: "4px 11px", fontSize: 9, fontWeight: 800, letterSpacing: 1.8, color: T.cyan, width: "fit-content" }}>
       💡 CONCEPT
+    </div>
+  );
+}
+
+function MarketViewsBadge() {
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.35)", borderRadius: 20, padding: "4px 11px", fontSize: 9, fontWeight: 800, letterSpacing: 1.8, color: "#ef4444", width: "fit-content" }}>
+      🔥 MARKET VIEWS
+    </div>
+  );
+}
+
+function RadarReelBadge({ scale = 1 }) {
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 5 * scale, background: "rgba(245,158,11,0.12)", border: `${1 * scale}px solid rgba(245,158,11,0.35)`, borderRadius: 20 * scale, padding: `${4 * scale}px ${11 * scale}px`, fontSize: 9 * scale, fontWeight: 800, letterSpacing: 1.8 * scale, color: T.gold, width: "fit-content" }}>
+      📡 RADAR
     </div>
   );
 }
@@ -338,9 +377,74 @@ function EduSlide4({ d }) {
 /* ═══════════════════════════════════════════════════════════
    RADAR SLIDES
 ═══════════════════════════════════════════════════════════ */
-function RadarSlide1({ d }) {
+/* ── Helpers for the RADAR hook slide ── */
+
+// Masked letter tiles — shows ticker LENGTH without revealing the name
+function MaskedTicker({ ticker = "????", exchange }) {
+  const letters = (ticker || "").replace(/[^A-Za-z]/g, "").split("");
+  const show = letters.length ? letters : ["?", "?", "?", "?", "?"];
   return (
-    <div style={{ ...slideBase, padding: "22px 24px 52px", background: "#09090f" }}>
+    <div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {show.slice(0, 7).map((_, i) => (
+          <div key={i} style={{
+            width: 30, height: 40, borderRadius: 8,
+            background: T.surface, border: `1px solid ${T.borderLight}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 18, fontWeight: 900, color: T.gold,
+          }}>?</div>
+        ))}
+      </div>
+      <div style={{ marginTop: 7, fontSize: 9, fontWeight: 800, color: T.muted, letterSpacing: 2 }}>
+        {show.length}-LETTER TICKER{exchange ? ` · ${exchange}` : ""}
+      </div>
+    </div>
+  );
+}
+
+// Deterministic "mystery price action" bars — seeded from text so every post
+// automatically gets a slightly different silhouette, with no manual work.
+function MysteryBars({ seed = "candlewise" }) {
+  let h = 7;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) % 2147483647;
+  const bars = Array.from({ length: 16 }, () => {
+    h = (h * 9301 + 49297) % 233280;
+    return 10 + (h % 32);
+  });
+  const peakIdx = bars.indexOf(Math.max(...bars));
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 42 }}>
+        {bars.map((v, i) => (
+          <div key={i} style={{
+            width: 7, height: v, borderRadius: 2,
+            background: i === peakIdx ? T.gold : T.borderLight,
+            boxShadow: i === peakIdx ? `0 0 10px ${T.gold}` : "none",
+          }} />
+        ))}
+      </div>
+      <div style={{ marginTop: 7, fontSize: 9, fontWeight: 800, color: T.muted, letterSpacing: 2 }}>
+        PATTERN SPOTTED ON THE RADAR
+      </div>
+    </div>
+  );
+}
+
+// Big teaser stat — a number that hints at the story without naming the stock
+function HookStat({ value = "—", label = "" }) {
+  return (
+    <div>
+      <div style={{ fontSize: 42, fontWeight: 900, letterSpacing: -1.5, lineHeight: 0.95, color: T.gold }}>{value}</div>
+      <div style={{ marginTop: 5, fontSize: 9, fontWeight: 800, color: T.muted, letterSpacing: 2, textTransform: "uppercase" }}>{label}</div>
+    </div>
+  );
+}
+
+function RadarSlide1({ d }) {
+  const variant = d.hookVariant || "redacted";
+
+  return (
+    <div style={{ ...slideBase, padding: "20px 24px 50px", background: "#09090f" }}>
       <GridOverlay />
       <div style={{ position: "absolute", bottom: -60, left: -60, width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,158,11,0.13) 0%, transparent 60%)", zIndex: 0 }} />
       <div style={{ position: "absolute", top: -30, right: -30, width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,158,11,0.07) 0%, transparent 65%)", zIndex: 0 }} />
@@ -350,44 +454,29 @@ function RadarSlide1({ d }) {
       <div style={{ position: "relative", zIndex: 2, textAlign: "left" }}>
         <RadarBadge />
 
-        <div style={{ marginTop: 18, fontSize: 10, fontWeight: 700, color: T.muted, letterSpacing: 2.5, textTransform: "uppercase" }}>{d.weekLabel}</div>
-
-        {/* Big ticker — unique every post */}
-        <div style={{ marginTop: 6, fontSize: 58, fontWeight: 900, letterSpacing: -2.5, lineHeight: 0.92, color: T.gold, textTransform: "uppercase" }}>
-          {d.ticker}
+        {/* Hero heading */}
+        <div style={{ marginTop: 16, fontSize: 26, fontWeight: 900, lineHeight: 1.15, letterSpacing: -0.5 }}>
+        STOCK I'M WATCHING <span style={{ color: T.gold }}>CLOSELY</span>
         </div>
 
-        {/* Sector / exchange / timeframe badges */}
-        <div style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {d.sector && (
-            <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 20, padding: "4px 12px", fontSize: 9.5, fontWeight: 800, color: T.gold, letterSpacing: 0.8 }}>{d.sector}</div>
-          )}
-          {d.exchange && (
-            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: "4px 12px", fontSize: 9.5, fontWeight: 700, color: T.mutedLight }}>{d.exchange}</div>
-          )}
-          {d.timeframe && (
-            <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 20, padding: "4px 12px", fontSize: 9.5, fontWeight: 700, color: T.mutedLight }}>{d.timeframe}</div>
-          )}
+        {/* Hero — varies by hookVariant so every post doesn't look identical */}
+        <div style={{ marginTop: 16 }}>
+          {variant === "stat" && <HookStat value={d.hookStat?.value} label={d.hookStat?.label} />}
+          {variant === "chart" && <MysteryBars seed={`${d.hookHeadline || ""}${d.weekLabel || ""}`} />}
+          {(variant === "redacted" || !variant) && <MaskedTicker ticker={d.ticker} exchange={d.exchange} />}
         </div>
 
-        {/* One-line thesis */}
-        <div style={{ marginTop: 50, borderLeft: `3px solid ${T.gold}`, paddingLeft: 14 }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: T.white, lineHeight: 1.6 }}>{d.thesis}</div>
+        {/* Subtle hint — small, not the hero anymore */}
+        <div style={{ marginTop: 14, fontSize: 11, fontWeight: 600, color: T.mutedLight, lineHeight: 1.5 }}>
+          {d.hookHeadline}
         </div>
 
-        {/* Why I'm watching */}
-        {/* {d.watchReason && (
-          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-            {d.watchReason.map((r, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "9px 12px" }}>
-                <span style={{ fontSize: 15, flexShrink: 0 }}>{r.icon}</span>
-                <div style={{ fontSize: 10.5, fontWeight: 600, color: T.mutedLight, lineHeight: 1.5 }}>{r.text}</div>
-              </div>
-            ))}
-          </div>
-        )} */}
+        {/* CTA driving swipe to next slide */}
+        <div style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 7, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 20, padding: "6px 13px", fontSize: 9.5, fontWeight: 800, color: T.gold, letterSpacing: 0.5 }}>
+          👀 Swipe for clues →
+        </div>
 
-        <div style={{ marginTop: 14, fontSize: 9.5, color: T.muted, fontWeight: 500, lineHeight: 1.5 }}>{d.subtitle}</div>
+        <div style={{ marginTop: 12, fontSize: 9, color: T.muted, fontWeight: 500, lineHeight: 1.5 }}>{d.subtitle}</div>
       </div>
 
       <Brand name={d.brand} color={T.muted} />
@@ -396,14 +485,56 @@ function RadarSlide1({ d }) {
   );
 }
 
-function RadarSlide2({ d, chartImg }) {
+function RadarSlide2({ d }) {
+  const clues = (d.clues && d.clues.length ? d.clues : []).slice(0, 3);
+  return (
+    <div style={{ ...slideBase, padding: "20px 24px 50px", background: "#09090f" }}>
+      <GridOverlay />
+      <div style={{ position: "absolute", bottom: -60, left: -60, width: 300, height: 300, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,158,11,0.13) 0%, transparent 60%)", zIndex: 0 }} />
+      <CornerMark color={T.gold} />
+      <SlideNum n={2} color={T.muted} />
+
+      <div style={{ position: "relative", zIndex: 2, textAlign: "left" }}>
+        <RadarBadge />
+
+        <div style={{ marginTop: 16, fontSize: 18, fontWeight: 900, lineHeight: 1.3, letterSpacing: -0.3 }}>
+          Can you guess this {d.exchange || "NSE"} stock in 3 clues?
+        </div>
+
+        {clues.length > 0 && (
+          <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+            {clues.map((c, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px" }}>
+                <span style={{ fontSize: 15, flexShrink: 0 }}>{c.icon}</span>
+                <div style={{ fontSize: 11, fontWeight: 600, color: T.mutedLight, lineHeight: 1.4 }}>{c.text}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* CTA driving comments + swipe to reveal */}
+        <div style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 7, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 20, padding: "6px 13px", fontSize: 9.5, fontWeight: 800, color: T.gold, letterSpacing: 0.5 }}>
+          👀 Reveal on next slide →
+        </div>
+      </div>
+
+      <Brand name={d.brand} color={T.muted} />
+      <SaveForLater color={T.muted} />
+    </div>
+  );
+}
+
+function RadarSlide3({ d, chartImg }) {
   return (
     <div style={{ ...slideBase, padding: "16px 18px 36px" }}>
       <CornerMark color={T.gold} />
-      <SlideNum n={2} color={T.muted} />
+      <SlideNum n={3} color={T.muted} />
       <div style={{ position: "relative", zIndex: 2 }}>
         <RadarBadge />
-        <div style={{ marginTop: 8, fontSize: 14, fontWeight: 900, letterSpacing: -0.3 }}>CHART <span style={{ color: T.gold }}>IN FOCUS</span></div>
+        <div style={{ marginTop: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ fontSize: 14, fontWeight: 900, letterSpacing: -0.3 }}>CHART <span style={{ color: T.gold }}>IN FOCUS</span></div>
+          <div style={{ fontSize: 9, fontWeight: 800, color: T.gold, letterSpacing: 1.5, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 20, padding: "3px 10px" }}>🎯 REVEALED</div>
+        </div>
         <div style={{ marginTop: 8, borderRadius: 10, overflow: "hidden", height: 206, background: T.surface, border: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
           {chartImg
             ? <img src={chartImg} alt="chart" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
@@ -414,14 +545,14 @@ function RadarSlide2({ d, chartImg }) {
           {/* Ticker chip */}
           <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 10, padding: "10px 16px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
             <div style={{ fontSize: 7.5, color: T.muted, fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>TICKER</div>
-            <div style={{ fontSize: 12, fontWeight: 900, color: T.gold, letterSpacing: -0.5 }}>{d.ticker}</div>
+            <div style={{ fontSize: 10, fontWeight: 800, color: T.gold, letterSpacing: -0.5 }}>{d.ticker}</div>
           </div>
           {/* Zone status */}
           <div style={{ flex: 1, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 14px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
             <div style={{ fontSize: 7.5, color: T.muted, fontWeight: 700, letterSpacing: 1, marginBottom: 5 }}>ZONE STATUS</div>
             <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: d.zoneColor || T.gold, boxShadow: `0 0 8px ${d.zoneColor || T.gold}`, flexShrink: 0 }} />
-              <div style={{ fontSize: 12, fontWeight: 900, color: d.zoneColor || T.gold, letterSpacing: 0.3 }}>{d.zone}</div>
+              <div style={{ fontSize: 10, fontWeight: 800, color: d.zoneColor || T.gold, letterSpacing: 0.3 }}>{d.zone}</div>
             </div>
           </div>
         </div>
@@ -431,13 +562,13 @@ function RadarSlide2({ d, chartImg }) {
   );
 }
 
-function RadarSlide3({ d }) {
+function RadarSlide4({ d }) {
   return (
     <div style={{ ...slideBase, padding: "20px 22px 36px" }}>
       <GridOverlay />
       <div style={{ position: "absolute", bottom: -40, right: -40, width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,158,11,0.14) 0%, transparent 65%)", zIndex: 0 }} />
       <CornerMark color={T.gold} />
-      <SlideNum n={3} color={T.muted} />
+      <SlideNum n={4} color={T.muted} />
       <div style={{ position: "relative", zIndex: 2 }}>
         <RadarBadge />
         <div style={{ marginTop: 10, fontSize: 15, fontWeight: 900, letterSpacing: -0.3 }}>THE <span style={{ color: T.gold }}>SETUP</span></div>
@@ -795,6 +926,390 @@ function CcSlide2({ d }) {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   MARKET VIEWS SLIDES — Opinion-first, tension-driven carousel
+   4 slides: Statement → Common Belief → Your View → Question
+═══════════════════════════════════════════════════════════ */
+
+/* Slide 1 — STATEMENT: the bold claim that stops the scroll */
+function MvSlide1({ d }) {
+  return (
+    <div style={{ ...slideBase, padding: "22px 24px 36px", background: "#0d0b0b" }}>
+      {/* Red radial glow top-right */}
+      <div style={{ position: "absolute", top: -60, right: -60, width: 260, height: 260, borderRadius: "50%", background: "radial-gradient(circle, rgba(239,68,68,0.18) 0%, transparent 65%)", zIndex: 0 }} />
+      <div style={{ position: "absolute", bottom: -40, left: -40, width: 160, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 65%)", zIndex: 0 }} />
+      <CornerMark color={T.red} />
+      <SlideNum n={1} color="rgba(239,68,68,0.5)" />
+      <div style={{ position: "relative", zIndex: 2, height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+        <div>
+          <MarketViewsBadge />
+          {/* Big provocative statement */}
+          <div style={{ marginTop: 26, lineHeight: 1.05 }}>
+            {d.statement.split("\\n").map((line, i) => (
+              <div key={i} style={{
+                fontSize: i === 0 ? 38 : 36,
+                fontWeight: 900,
+                letterSpacing: -1.5,
+                color: i === d.statement.split("\\n").length - 1 ? T.red : T.white,
+              }}>{line}</div>
+            ))}
+          </div>
+          {/* Thin red underline accent */}
+          <div style={{ marginTop: 18, width: 40, height: 3, background: T.red, borderRadius: 2 }} />
+          {d.statementSub && (
+            <div style={{ marginTop: 12, fontSize: 11, color: T.muted, fontWeight: 500, lineHeight: 1.65, maxWidth: 260 }}>{d.statementSub}</div>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 10, fontWeight: 700, color: "rgba(239,68,68,0.7)" }}>
+          <div style={{ width: 20, height: 20, borderRadius: "50%", border: "1.5px solid rgba(239,68,68,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9 }}>→</div>
+          Swipe — agree or disagree?
+        </div>
+      </div>
+      <Brand name={d.brand} color={T.muted} />
+    </div>
+  );
+}
+
+/* Slide 2 — COMMON BELIEF: what most people think (sets up the tension) */
+function MvSlide2({ d }) {
+  return (
+    <div style={{ ...slideBase, padding: "22px 24px 36px", background: "#0d0b0b" }}>
+      <GridOverlay />
+      <CornerMark color={T.red} />
+      <SlideNum n={2} color="rgba(239,68,68,0.5)" />
+      <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", height: "calc(100% - 36px)" }}>
+        <div>
+          <MarketViewsBadge />
+          <div style={{ marginTop: 14, fontSize: 10, fontWeight: 800, color: T.muted, letterSpacing: 2, textTransform: "uppercase" }}>
+            What most traders believe
+          </div>
+          {/* The "crowd" belief — large quote block, more breathing room */}
+          <div style={{ marginTop: 12, background: "rgba(255,255,255,0.04)", border: `1px solid ${T.borderLight}`, borderRadius: 14, padding: "22px 18px 18px", position: "relative" }}>
+            <div style={{ position: "absolute", top: -4, left: 14, fontSize: 52, color: "rgba(255,255,255,0.07)", fontWeight: 900, lineHeight: 1, fontFamily: "Georgia, serif" }}>"</div>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: T.white, lineHeight: 1.6 }}>{d.commonBelief}</div>
+          </div>
+        </div>
+
+        {/* Tension teaser — pushed to bottom, acts as the cliffhanger before slide 3 */}
+        <div style={{ marginTop: "auto", paddingTop: 20 }}>
+          <div style={{ height: 1, background: "rgba(239,68,68,0.15)", marginBottom: 16 }} />
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+            <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0, marginTop: 2 }}>⚡</span>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(239,68,68,0.9)", lineHeight: 1.55 }}>
+              {d.tensionTeaser || "I used to think the same. Then I looked closer."}
+            </div>
+          </div>
+        </div>
+      </div>
+      <Brand name={d.brand} color={T.muted} />
+      <SaveForLater color={T.muted} />
+    </div>
+  );
+}
+function MvSlide3({ d }) {
+  return (
+    <div style={{ ...slideBase, padding: "22px 24px 36px", background: "#0d0b0b" }}>
+      {/* Red glow bottom-left */}
+      <div style={{ position: "absolute", bottom: -50, left: -50, width: 220, height: 220, borderRadius: "50%", background: "radial-gradient(circle, rgba(239,68,68,0.15) 0%, transparent 65%)", zIndex: 0 }} />
+      <CornerMark color={T.red} />
+      <SlideNum n={3} color="rgba(239,68,68,0.5)" />
+      <div style={{ position: "relative", zIndex: 2 }}>
+        <MarketViewsBadge />
+        <div style={{ marginTop: 14, fontSize: 10, fontWeight: 800, color: T.red, letterSpacing: 2, textTransform: "uppercase" }}>
+          My view
+        </div>
+        {/* View points — each line is a conviction statement */}
+        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+          {d.viewPoints.map((pt, i) => (
+            <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <div style={{ width: 5, height: 5, borderRadius: "50%", background: T.red, flexShrink: 0, marginTop: 6 }} />
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.white, lineHeight: 1.5 }}>{pt}</div>
+            </div>
+          ))}
+        </div>
+        {/* Context note */}
+        {d.contextNote && (
+          <div style={{ marginTop: 18, borderLeft: `3px solid rgba(239,68,68,0.5)`, paddingLeft: 12 }}>
+            <div style={{ fontSize: 10.5, fontStyle: "italic", color: T.mutedLight, lineHeight: 1.7, fontWeight: 500 }}>{d.contextNote}</div>
+          </div>
+        )}
+      </div>
+      <Brand name={d.brand} color={T.muted} />
+    </div>
+  );
+}
+
+/* Slide 4 — QUESTION: flip it back, drive comments */
+function MvSlide4({ d }) {
+  return (
+    <div style={{ ...slideBase, padding: "22px 24px 36px", background: "#0d0b0b" }}>
+      <GridOverlay />
+      <div style={{ position: "absolute", top: -50, left: -50, width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(239,68,68,0.12) 0%, transparent 65%)", zIndex: 0 }} />
+      <CornerMark color={T.red} />
+      <SlideNum n={4} color="rgba(239,68,68,0.5)" />
+      <div style={{ position: "relative", zIndex: 2, height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+        <div>
+          <MarketViewsBadge />
+          {/* The question — big, direct */}
+          <div style={{ marginTop: 20, fontSize: 28, fontWeight: 900, letterSpacing: -1, lineHeight: 1.15, color: T.white }}>
+            {d.question}
+          </div>
+          {/* Binary "camps" — encourages picking a side */}
+          <div style={{ marginTop: 22, display: "flex", gap: 10 }}>
+            <div style={{ flex: 1, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.35)", borderRadius: 12, padding: "12px 14px", textAlign: "center" }}>
+              <div style={{ fontSize: 16, marginBottom: 4 }}>{d.sideA?.emoji || "🔴"}</div>
+              <div style={{ fontSize: 10.5, fontWeight: 800, color: T.red, lineHeight: 1.35 }}>{d.sideA?.label || "Agree"}</div>
+            </div>
+            <div style={{ flex: 1, background: "rgba(255,255,255,0.05)", border: `1px solid ${T.borderLight}`, borderRadius: 12, padding: "12px 14px", textAlign: "center" }}>
+              <div style={{ fontSize: 16, marginBottom: 4 }}>{d.sideB?.emoji || "🟢"}</div>
+              <div style={{ fontSize: 10.5, fontWeight: 800, color: T.mutedLight, lineHeight: 1.35 }}>{d.sideB?.label || "Disagree"}</div>
+            </div>
+          </div>
+          {/* Closing quote */}
+          {d.closingQuote && (
+            <div style={{ marginTop: 18, borderLeft: `3px solid rgba(239,68,68,0.4)`, paddingLeft: 12 }}>
+              <div style={{ fontSize: 10.5, fontStyle: "italic", color: T.mutedLight, lineHeight: 1.7, fontWeight: 500 }}>{d.closingQuote}</div>
+            </div>
+          )}
+        </div>
+      </div>
+      <Brand name={d.brand} color={T.muted} />
+      <SaveForLater color={T.muted} />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RADAR REEL SLIDES — Vertical 1080x1920 Instagram Reel
+   Separate canvas (REEL_W x REEL_H), gold/dark Radar theme.
+   Safe zones: 120px top, 180px bottom — all critical text sits inside.
+═══════════════════════════════════════════════════════════ */
+
+/* Reusable footer for reel scenes — sits above the 180px bottom safe line.
+   Rendered as a normal flex child (not absolutely positioned) so it never
+   overlaps content that grows via marginTop: "auto". */
+function ReelFooter({ brand = "CANDLEWISE", style }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, flexShrink: 0, ...style }}>
+      <span style={{ fontSize: 28, opacity: 0.8, color: T.gold }}>▲</span>
+      <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: 4, color: T.mutedLight, textTransform: "uppercase" }}>{brand}</span>
+    </div>
+  );
+}
+
+function ReelGlow({ style }) {
+  return <div style={{ position: "absolute", borderRadius: "50%", zIndex: 0, ...style }} />;
+}
+
+/* Scene 1 — HOOK */
+function RadarReelSlide1({ d }) {
+  return (
+    <div style={{ ...reelSlideBase, padding: "0 64px" }}>
+      <GridOverlay />
+      <ReelGlow style={{ top: -160, right: -160, width: 760, height: 760, background: "radial-gradient(circle, rgba(245,158,11,0.16) 0%, transparent 65%)" }} />
+      <ReelGlow style={{ bottom: -200, left: -180, width: 700, height: 700, background: "radial-gradient(circle, rgba(245,158,11,0.10) 0%, transparent 65%)" }} />
+
+      <div style={{ position: "relative", zIndex: 2, height: "100%", display: "flex", flexDirection: "column", paddingTop: 160, paddingBottom: 100 }}>
+        <RadarReelBadge scale={2.6} />
+
+        {/* Headline */}
+        <div style={{ marginTop: 64, fontSize: 84, fontWeight: 900, lineHeight: 1.08, letterSpacing: -2, color: T.white }}>
+          {(d.title || "3 Stocks On My Radar This Week").split("\n").map((line, i) => (
+            <div key={i}>{line}</div>
+          ))}
+        </div>
+
+        {/* Optional sub-headline */}
+        <div style={{ marginTop: 28, fontSize: 38, fontWeight: 600, color: T.mutedLight, lineHeight: 1.5, maxWidth: 820 }}>
+          {d.subheadline || "Swipe to see which stocks are on the list"}
+        </div>
+
+        {/* Big animated-style numbers */}
+        <div style={{ marginTop: 64, display: "flex", gap: 36, alignItems: "center" }}>
+          {["#1", "#2", "#3"].map((n, i) => (
+            <div key={i} style={{
+              fontSize: 120, fontWeight: 900, letterSpacing: -4, lineHeight: 1,
+              color: i === 0 ? T.gold : "transparent",
+              WebkitTextStroke: i === 0 ? "none" : `3px ${T.gold}`,
+              opacity: i === 0 ? 1 : 0.55,
+            }}>{n}</div>
+          ))}
+        </div>
+
+        {/* Week label */}
+        {d.weekLabel && (
+          <div style={{ marginTop: 28, fontSize: 32, fontWeight: 700, color: T.muted, letterSpacing: 2 }}>{d.weekLabel}</div>
+        )}
+
+        {/* Bottom CTA */}
+        <div style={{ marginTop: 44, display: "inline-flex", alignItems: "center", gap: 16, background: "rgba(245,158,11,0.12)", border: "2px solid rgba(245,158,11,0.35)", borderRadius: 60, padding: "20px 44px", width: "fit-content" }}>
+          <span style={{ fontSize: 44, fontWeight: 900, color: T.gold, letterSpacing: 2 }}>Swipe →</span>
+        </div>
+
+        <ReelFooter brand={d.brand} style={{ marginTop: 60 }} />
+      </div>
+    </div>
+  );
+}
+
+/* Shared layout for Scenes 2–4 (Stock 1 / 2 / 3) */
+function RadarReelStockSlide({ n, ticker, company, clue1, clue2, clue3, brand, sceneNum }) {
+  return (
+    <div style={{ ...reelSlideBase, padding: "0 64px" }}>
+      <GridOverlay />
+      <ReelGlow style={{ top: -180, left: -180, width: 720, height: 720, background: "radial-gradient(circle, rgba(245,158,11,0.13) 0%, transparent 65%)" }} />
+      <ReelGlow style={{ bottom: -220, right: -160, width: 680, height: 680, background: "radial-gradient(circle, rgba(245,158,11,0.08) 0%, transparent 65%)" }} />
+
+      <div style={{ position: "relative", zIndex: 2, height: "100%", display: "flex", flexDirection: "column", paddingTop: 160, paddingBottom: 100 }}>
+        <RadarReelBadge scale={2.6} />
+
+        {/* Top label — STOCK #N */}
+        <div style={{ marginTop: 48, fontSize: 40, fontWeight: 800, letterSpacing: 6, color: T.muted, textTransform: "uppercase" }}>
+          STOCK <span style={{ color: T.gold }}>#{n}</span>
+        </div>
+
+        {/* Clue cards */}
+        <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 20 }}>
+          {[clue1, clue2, clue3].map((clue, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 22, background: "rgba(255,255,255,0.04)", border: `2px solid ${T.borderLight}`, borderRadius: 24, padding: "24px 32px" }}>
+              <div style={{ width: 56, height: 56, borderRadius: 14, flexShrink: 0, background: "rgba(245,158,11,0.12)", border: "2px solid rgba(245,158,11,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 900, color: T.gold }}>
+                {i + 1}
+              </div>
+              <div style={{ fontSize: 38, fontWeight: 600, color: T.white, lineHeight: 1.4, paddingTop: 6 }}>
+                {clue || `Clue ${i + 1}`}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Ticker section */}
+        <div style={{ marginTop: 48, display: "flex", flexDirection: "column", gap: 20 }}>
+          <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: 5, color: T.muted, textTransform: "uppercase" }}>On the radar</div>
+          <div style={{
+            fontSize: 96, fontWeight: 900, letterSpacing: -3, lineHeight: 1.05,
+            color: T.gold, wordBreak: "break-word",
+          }}>{ticker || "TICKER"}</div>
+          {company && (
+            <div style={{ fontSize: 34, fontWeight: 600, color: T.mutedLight, marginTop: -8 }}>{company}</div>
+          )}
+          <div style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 16, background: "rgba(245,158,11,0.12)", border: "2px solid rgba(245,158,11,0.35)", borderRadius: 60, padding: "18px 38px", width: "fit-content" }}>
+            <div style={{ width: 16, height: 16, borderRadius: "50%", background: T.gold, boxShadow: `0 0 16px ${T.gold}` }} />
+            <span style={{ fontSize: 32, fontWeight: 800, letterSpacing: 3, color: T.gold }}>WATCHING CLOSELY</span>
+          </div>
+        </div>
+
+        {/* Bottom note */}
+        <div style={{ textAlign: "center", marginTop: 48, marginBottom: 28 }}>
+          <div style={{ fontSize: 28, fontWeight: 600, color: T.muted, letterSpacing: 1 }}>Full analysis available on profile</div>
+        </div>
+        <ReelFooter brand={brand} />
+      </div>
+    </div>
+  );
+}
+
+/* Scene 2 — Stock 1 */
+function RadarReelSlide2({ d }) {
+  return (
+    <RadarReelStockSlide
+      n={1} sceneNum={2}
+      ticker={d.stock1Ticker} company={d.stock1Company}
+      clue1={d.stock1Clue1} clue2={d.stock1Clue2} clue3={d.stock1Clue3}
+      brand={d.brand}
+    />
+  );
+}
+
+/* Scene 3 — Stock 2 */
+function RadarReelSlide3({ d }) {
+  return (
+    <RadarReelStockSlide
+      n={2} sceneNum={3}
+      ticker={d.stock2Ticker} company={d.stock2Company}
+      clue1={d.stock2Clue1} clue2={d.stock2Clue2} clue3={d.stock2Clue3}
+      brand={d.brand}
+    />
+  );
+}
+
+/* Scene 4 — Stock 3 */
+function RadarReelSlide4({ d }) {
+  return (
+    <RadarReelStockSlide
+      n={3} sceneNum={4}
+      ticker={d.stock3Ticker} company={d.stock3Company}
+      clue1={d.stock3Clue1} clue2={d.stock3Clue2} clue3={d.stock3Clue3}
+      brand={d.brand}
+    />
+  );
+}
+
+/* Scene 5 — CTA */
+function RadarReelSlide5({ d }) {
+  const tickers = [d.stock1Ticker, d.stock2Ticker, d.stock3Ticker].filter(Boolean);
+  return (
+    <div style={{ ...reelSlideBase, padding: "0 64px" }}>
+      <GridOverlay />
+      <ReelGlow style={{ top: -180, right: -180, width: 760, height: 760, background: "radial-gradient(circle, rgba(245,158,11,0.16) 0%, transparent 65%)" }} />
+      <ReelGlow style={{ bottom: -220, left: -180, width: 700, height: 700, background: "radial-gradient(circle, rgba(245,158,11,0.10) 0%, transparent 65%)" }} />
+
+      <div style={{ position: "relative", zIndex: 2, height: "100%", display: "flex", flexDirection: "column", paddingTop: 140, paddingBottom: 60 }}>
+        <RadarReelBadge scale={2.6} />
+
+        {/* Headline */}
+        <div style={{ marginTop: 40, fontSize: 64, fontWeight: 900, lineHeight: 1.12, letterSpacing: -1.5, color: T.white }}>
+          Want To Know Why These Stocks Made My <span style={{ color: T.gold }}>Watchlist?</span>
+        </div>
+
+        {/* This week's watchlist recap */}
+        {tickers.length > 0 && (
+          <div style={{ marginTop: 32 }}>
+            <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: 5, color: T.muted, textTransform: "uppercase", marginBottom: 14 }}>This week's watchlist</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {tickers.map((t, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 18, background: "rgba(255,255,255,0.04)", border: `2px solid ${T.borderLight}`, borderRadius: 18, padding: "16px 26px" }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, background: "rgba(245,158,11,0.12)", border: "2px solid rgba(245,158,11,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 900, color: T.gold }}>
+                    {i + 1}
+                  </div>
+                  <span style={{ fontSize: 38, fontWeight: 800, color: T.white, letterSpacing: -0.5 }}>{t}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Large CTA card */}
+        <div style={{ marginTop: 32, background: "rgba(245,158,11,0.1)", border: "3px solid rgba(245,158,11,0.35)", borderRadius: 28, padding: "32px 36px" }}>
+          <div style={{ fontSize: 52, fontWeight: 900, color: T.gold, letterSpacing: -1.5, lineHeight: 1.2 }}>
+            {d.ctaText || "Check the latest carousel posts"}
+          </div>
+          <div style={{ marginTop: 20, display: "flex", flexWrap: "wrap", gap: 12 }}>
+            {["Full breakdown", "Chart setup", "Risk levels", "Trade thesis"].map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(0,0,0,0.2)", borderRadius: 40, padding: "8px 18px" }}>
+                <div style={{ width: 9, height: 9, borderRadius: "50%", background: T.gold, flexShrink: 0 }} />
+                <span style={{ fontSize: 28, fontWeight: 700, color: T.white }}>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom CTAs */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 32, marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, background: "rgba(255,255,255,0.05)", border: `2px solid ${T.borderLight}`, borderRadius: 60, padding: "18px 32px" }}>
+            <span style={{ fontSize: 34 }}>📌</span>
+            <span style={{ fontSize: 32, fontWeight: 800, color: T.white }}>Follow @candlewise.hq</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, background: "rgba(245,158,11,0.12)", border: "2px solid rgba(245,158,11,0.35)", borderRadius: 60, padding: "18px 32px" }}>
+            <span style={{ fontSize: 34 }}>🔖</span>
+            <span style={{ fontSize: 32, fontWeight: 800, color: T.gold }}>Save this reel</span>
+          </div>
+        </div>
+        <ReelFooter brand={d.brand} />
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
    DEFAULT DATA
 ═══════════════════════════════════════════════════════════ */
 const DEFAULT_EDU = {
@@ -827,9 +1342,13 @@ const DEFAULT_RADAR = {
   timeframe: "Weekly",
   thesis: "Breaking out of an 8-month base with institutional volume. Classic spring-load setup.",
   subtitle: "This is a watchlist observation, not a recommendation.",
-  watchReason: [
-    { icon: "📊", text: "8-month base breakout with expanding volume on the weekly chart." },
-    { icon: "🏭", text: "Electronics PLI tailwind — sector getting institutional attention." },
+  hookVariant: "redacted", // "redacted" | "chart" | "stat"
+  hookHeadline: "This stock just broke an 8-month base on 3x volume. Can you guess it?",
+  hookStat: { value: "3.2x", label: "weekly volume vs average" },
+  clues: [
+    { icon: "🏭", text: "Sector: Electronics manufacturing — riding the PLI tailwind." },
+    { icon: "💰", text: "Mid-cap, comfortably under ₹20,000 Cr." },
+    { icon: "📈", text: "Just broke out of an 8-month base on the weekly chart." },
   ],
   zone: "ACTIVE BREAKOUT",
   zoneColor: "#10b981",
@@ -896,6 +1415,48 @@ const DEFAULT_CONCEPT = {
   example: "Nifty 50 formed a Death Cross in Mar 2020. Fell ~38% before reversing.",
 };
 
+const DEFAULT_MARKET_VIEWS = {
+  brand: "CANDLEWISE",
+  statement: "WHY I DON'T\nUSE RSI",
+  statementSub: "An indicator followed by millions — yet I removed it from every chart.",
+  commonBelief: "RSI tells you when a stock is overbought or oversold. Buy below 30. Sell above 70.",
+  beliefTags: [],
+  tensionTeaser: "I used to trade this way. My results told a different story.",
+  viewPoints: [
+    "I focus on price action first.",
+    "RSI is secondary.",
+    "Context matters more than any indicator.",
+  ],
+  contextNote: "A stock can stay 'overbought' for months during a strong uptrend. The indicator lags. Price doesn't lie.",
+  question: "RSI or Price Action?\nWhat's worked better for you?",
+  sideA: { emoji: "📊", label: "RSI — I trust the indicator" },
+  sideB: { emoji: "📈", label: "Price Action — charts first" },
+  closingQuote: "Indicators are derived from price. So why not read price directly?",
+};
+
+const DEFAULT_RADAR_REEL = {
+  brand: "CANDLEWISE",
+  title: "3 Stocks On My\nRadar This Week",
+  subheadline: "Swipe to see which stocks are on the list",
+  weekLabel: "WEEK OF JUN 14",
+  stock1Ticker: "POLYCAB",
+  stock1Company: "Polycab India Ltd",
+  stock1Clue1: "Breaking out of a 6-month consolidation range",
+  stock1Clue2: "Volume spiked 2.5x the 20-day average",
+  stock1Clue3: "Sector leader showing renewed momentum",
+  stock2Ticker: "TATAPOWER",
+  stock2Company: "Tata Power Company Ltd",
+  stock2Clue1: "Forming a tight flag pattern near resistance",
+  stock2Clue2: "Sector showing relative strength vs Nifty",
+  stock2Clue3: "Strong volume support on recent pullbacks",
+  stock3Ticker: "DIXON",
+  stock3Company: "Dixon Technologies Ltd",
+  stock3Clue1: "Retesting a former resistance turned support",
+  stock3Clue2: "RSI cooling off from overbought into neutral",
+  stock3Clue3: "Holding above key moving averages",
+  ctaText: "Check the latest carousel posts",
+};
+
 /* ═══════════════════════════════════════════════════════════
    EDITOR HELPERS
 ═══════════════════════════════════════════════════════════ */
@@ -913,6 +1474,23 @@ function Field({ label, value, onChange, multiline }) {
         ? <textarea style={{ ...s, minHeight: 52 }} value={value} onChange={e => onChange(e.target.value)} />
         : <input style={s} value={value} onChange={e => onChange(e.target.value)} />
       }
+    </div>
+  );
+}
+
+function SelectField({ label, value, onChange, options }) {
+  const s = {
+    width: "100%", background: "#151a22", border: `1px solid #1e2530`,
+    borderRadius: 8, color: "#ffffff", padding: "8px 10px",
+    fontSize: 12, outline: "none", fontFamily: "'Montserrat', sans-serif",
+    boxSizing: "border-box",
+  };
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ fontSize: 10, color: "#6b7a90", marginBottom: 4, fontWeight: 700, letterSpacing: 0.5 }}>{label}</div>
+      <select style={s} value={value} onChange={e => onChange(e.target.value)}>
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
     </div>
   );
 }
@@ -1011,15 +1589,105 @@ function DownloadButton({ slides, template, accent }) {
   );
 }
 
+/* ─────────────────────────────────────────────
+   RADAR REEL EXPORT ENGINE — separate 1080x1920 pipeline.
+   Carousel export above (DownloadButton/captureSlideNode) is untouched.
+───────────────────────────────────────────── */
+const REEL_SCALE = 1; // reel components are already authored at full 1080x1920
+
+async function captureReelNode(node) {
+  if (!window.html2canvas) throw new Error("html2canvas not loaded yet");
+  return window.html2canvas(node, {
+    scale: REEL_SCALE, useCORS: true, allowTaint: true,
+    backgroundColor: "#09090f", width: REEL_W, height: REEL_H, logging: false,
+  });
+}
+
+function ReelDownloadButton({ slides, accent, activeSlide }) {
+  const [status, setStatus] = useState("idle");
+  const [progress, setProgress] = useState(0);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!window.JSZip) {
+      const s = document.createElement("script");
+      s.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+      document.head.appendChild(s);
+    }
+  }, []);
+
+  const exportScenes = useCallback(async (indices, opts = {}) => {
+    if (!window.html2canvas) { alert("Renderer still loading — wait a second and try again."); return; }
+    setStatus("loading"); setProgress(0);
+    try {
+      const nodes = Array.from(containerRef.current.querySelectorAll("[data-reel-slide]"));
+      const blobs = [];
+      for (let i = 0; i < indices.length; i++) {
+        const idx = indices[i];
+        const canvas = await captureReelNode(nodes[idx]);
+        blobs.push({ blob: await canvasToBlob(canvas), name: `radar-reel-scene-${idx + 1}.png` });
+        setProgress(Math.round(((i + 1) / indices.length) * 100));
+      }
+      if (opts.zip && window.JSZip) {
+        const zip = new window.JSZip();
+        blobs.forEach(({ blob, name }) => zip.file(name, blob));
+        downloadBlob(await zip.generateAsync({ type: "blob" }), `CandleWise_RadarReel.zip`);
+      } else {
+        for (const { blob, name } of blobs) { downloadBlob(blob, name); await new Promise(r => setTimeout(r, 300)); }
+      }
+      setStatus("done"); setTimeout(() => setStatus("idle"), 3000);
+    } catch (err) { console.error(err); setStatus("error"); setTimeout(() => setStatus("idle"), 3000); }
+  }, [slides]);
+
+  const allIndices = slides.map((_, i) => i);
+  const isLoading = status === "loading";
+  const btnLabel = isLoading ? `Exporting… ${progress}%` : status === "done" ? "✅ Done!" : status === "error" ? "❌ Error — retry" : null;
+
+  const btnBase = {
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+    border: "none", color: T.white, borderRadius: 10, padding: "11px 18px",
+    fontWeight: 800, fontSize: 12, cursor: isLoading ? "not-allowed" : "pointer",
+    fontFamily: T.font, opacity: isLoading ? 0.8 : 1, transition: "all 0.2s",
+  };
+  const statusColor = status === "done" ? "#10b981" : status === "error" ? T.red : accent;
+
+  return (
+    <>
+      {/* Hidden full-resolution 1080x1920 render targets for capture */}
+      <div ref={containerRef} style={{ position: "fixed", top: 0, left: "-99999px", display: "flex", flexDirection: "column", pointerEvents: "none", zIndex: -1 }}>
+        {slides.map((slide, i) => (
+          <div key={i} data-reel-slide={i} style={{ width: REEL_W, height: REEL_H, flexShrink: 0 }}>{slide}</div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+        <button onClick={() => exportScenes(allIndices, { zip: true })} disabled={isLoading} style={{ ...btnBase, background: statusColor, minWidth: 200 }}>
+          {!btnLabel && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>}
+          {btnLabel || "⬇ Export All Scenes (ZIP)"}
+        </button>
+        <button onClick={() => exportScenes(allIndices, { zip: false })} disabled={isLoading} style={{ ...btnBase, background: T.surface, border: `1px solid ${accent}55`, color: accent, minWidth: 170 }}>
+          ⬇ Export All Scenes (PNGs)
+        </button>
+        <button onClick={() => exportScenes([activeSlide], { zip: false })} disabled={isLoading} style={{ ...btnBase, background: T.surface, border: `1px solid ${T.border}`, color: T.mutedLight, minWidth: 170 }}>
+          ⬇ Export Current Scene
+        </button>
+      </div>
+      <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+    </>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════
    MAIN APP
 ═══════════════════════════════════════════════════════════ */
 const TEMPLATES = [
-  { id: "edu",       label: "📚 Education",  accent: "#3b82f6" },
-  { id: "radar",     label: "📡 Radar",      accent: "#f59e0b" },
-  { id: "review",    label: "📋 Review",     accent: "#10b981" },
-  { id: "breakdown", label: "🔍 Breakdown",  accent: "#8b5cf6" },
-  { id: "concept",   label: "💡 Concept",    accent: "#06b6d4" },
+  { id: "edu",         label: "📚 Education",     accent: "#3b82f6" },
+  { id: "radar",       label: "📡 Radar",          accent: "#f59e0b" },
+  { id: "review",      label: "📋 Review",         accent: "#10b981" },
+  { id: "breakdown",   label: "🔍 Breakdown",      accent: "#8b5cf6" },
+  { id: "concept",     label: "💡 Concept",        accent: "#06b6d4" },
+  { id: "marketviews", label: "🔥 Market Views",   accent: "#ef4444" },
+  { id: "radarreel",   label: "📡 Radar Reel",     accent: "#f59e0b" },
 ];
 
 export default function App() {
@@ -1033,6 +1701,8 @@ export default function App() {
   const [reviewData, setReviewData]   = useState(DEFAULT_REVIEW);
   const [bdData, setBdData]           = useState(DEFAULT_BREAKDOWN);
   const [ccData, setCcData]           = useState(DEFAULT_CONCEPT);
+  const [mvData, setMvData]           = useState(DEFAULT_MARKET_VIEWS);
+  const [radarReelData, setRadarReelData] = useState(DEFAULT_RADAR_REEL);
   const fileRef  = useRef();
   const file2Ref = useRef();
 
@@ -1064,8 +1734,9 @@ export default function App() {
     ];
     if (template === "radar") return [
       <RadarSlide1 d={radarData} />,
-      <RadarSlide2 d={radarData} chartImg={chartImg} />,
-      <RadarSlide3 d={radarData} />,
+      <RadarSlide2 d={radarData} />,
+      <RadarSlide3 d={radarData} chartImg={chartImg} />,
+      <RadarSlide4 d={radarData} />,
       <DisclaimerSlide brand={radarData.brand} accent="#f59e0b" />,
     ];
     if (template === "review") return [
@@ -1078,6 +1749,19 @@ export default function App() {
       <BdSlide1 d={bdData} chartImg={chartImg} />,
       <BdSlide2 d={bdData} chart2Img={chart2Img} />,
       <BdSlide3 d={bdData} />,
+    ];
+    if (template === "marketviews") return [
+      <MvSlide1 d={mvData} />,
+      <MvSlide2 d={mvData} />,
+      <MvSlide3 d={mvData} />,
+      <MvSlide4 d={mvData} />,
+    ];
+    if (template === "radarreel") return [
+      <RadarReelSlide1 d={radarReelData} />,
+      <RadarReelSlide2 d={radarReelData} />,
+      <RadarReelSlide3 d={radarReelData} />,
+      <RadarReelSlide4 d={radarReelData} />,
+      <RadarReelSlide5 d={radarReelData} />,
     ];
     // concept
     return [
@@ -1094,16 +1778,28 @@ export default function App() {
   const updReview = (k, v) => setReviewData(d => ({ ...d, [k]: v }));
   const updBd     = (k, v) => setBdData(d     => ({ ...d, [k]: v }));
   const updCc     = (k, v) => setCcData(d     => ({ ...d, [k]: v }));
+  const updMv     = (k, v) => setMvData(d     => ({ ...d, [k]: v }));
+  const updRadarReel = (k, v) => setRadarReelData(d => ({ ...d, [k]: v }));
 
   const updEduWhy      = (i, f, v) => { const a = [...eduData.whyPoints];      a[i] = { ...a[i], [f]: v }; updEdu("whyPoints", a); };
   const updEduStep     = (i, f, v) => { const a = [...eduData.patternSteps];    a[i] = { ...a[i], [f]: v }; updEdu("patternSteps", a); };
   const updRadarSetup  = (i, f, v) => { const a = [...radarData.setupPoints];   a[i] = { ...a[i], [f]: v }; updRadar("setupPoints", a); };
+  const updRadarClue   = (i, f, v) => { const a = [...(radarData.clues || [])]; a[i] = { ...a[i], [f]: v }; updRadar("clues", a); };
+  const updRadarHookStat = (f, v) => { updRadar("hookStat", { ...(radarData.hookStat || {}), [f]: v }); };
   const updReviewLearn = (i, f, v) => { const a = [...reviewData.learnings];    a[i] = { ...a[i], [f]: v }; updReview("learnings", a); };
   const updBdRule      = (i, f, v) => { const a = [...bdData.rules];            a[i] = { ...a[i], [f]: v }; updBd("rules", a); };
   const updCcPoint     = (i, v)    => { const a = [...ccData.keyPoints];        a[i] = v;                   updCc("keyPoints", a); };
+  const updMvViewPoint = (i, v)    => { const a = [...mvData.viewPoints];       a[i] = v;                   updMv("viewPoints", a); };
+  const updMvBeliefTag = (i, v)    => { const a = [...(mvData.beliefTags||[])]; a[i] = v;                   updMv("beliefTags", a); };
+  const updMvSideA     = (f, v)    => { updMv("sideA", { ...(mvData.sideA||{}), [f]: v }); };
+  const updMvSideB     = (f, v)    => { updMv("sideB", { ...(mvData.sideB||{}), [f]: v }); };
 
   const slideLabels = (count) => {
-    const noDisclaimer = ["breakdown", "concept"];
+    const noDisclaimer = ["breakdown", "concept", "marketviews", "radarreel"];
+    if (template === "radarreel") {
+      const reelLabels = ["Hook", "Stock 1", "Stock 2", "Stock 3", "CTA"];
+      return Array.from({ length: count }, (_, i) => `Scene ${i + 1} — ${reelLabels[i] || ""}`.trim());
+    }
     return Array.from({ length: count }, (_, i) =>
       (!noDisclaimer.includes(template) && i === count - 1) ? "⚖️ Disclaimer" : `Slide ${i + 1}`
     );
@@ -1169,7 +1865,16 @@ export default function App() {
           </div>
 
           <div style={{ display: "flex", justifyContent: "center" }}>
-            {slides[safeActive]}
+            {template === "radarreel"
+              ? (
+                <div style={{ width: RW, height: RH, overflow: "hidden", borderRadius: 18, border: `1px solid ${T.border}` }}>
+                  <div style={{ transform: `scale(${REEL_PREVIEW_SCALE})`, transformOrigin: "top left", width: REEL_W, height: REEL_H }}>
+                    {slides[safeActive]}
+                  </div>
+                </div>
+              )
+              : slides[safeActive]
+            }
           </div>
 
           {/* Thumbnail strip */}
@@ -1177,25 +1882,48 @@ export default function App() {
             <div style={{ fontSize: 10, color: T.muted, fontWeight: 700, letterSpacing: 1.5, marginBottom: 10, textTransform: "uppercase" }}>All Slides — click to select</div>
             <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
               {slides.map((s, i) => (
-                <div key={i} onClick={() => setActiveSlide(i)} style={{
-                  width: SW * 0.27, height: SH * 0.27, flexShrink: 0, cursor: "pointer",
-                  borderRadius: 6, overflow: "hidden",
-                  outline: safeActive === i ? `2.5px solid ${currentAccent}` : `1px solid ${T.border}`,
-                  position: "relative",
-                }}>
-                  <div style={{ transform: `scale(0.27)`, transformOrigin: "top left", width: SW, height: SH, pointerEvents: "none" }}>{s}</div>
-                </div>
+                template === "radarreel" ? (
+                  <div key={i} onClick={() => setActiveSlide(i)} style={{
+                    width: RW * 0.4, height: RH * 0.4, flexShrink: 0, cursor: "pointer",
+                    borderRadius: 6, overflow: "hidden",
+                    outline: safeActive === i ? `2.5px solid ${currentAccent}` : `1px solid ${T.border}`,
+                    position: "relative",
+                  }}>
+                    <div style={{ transform: `scale(${REEL_PREVIEW_SCALE * 0.4})`, transformOrigin: "top left", width: REEL_W, height: REEL_H, pointerEvents: "none" }}>{s}</div>
+                  </div>
+                ) : (
+                  <div key={i} onClick={() => setActiveSlide(i)} style={{
+                    width: SW * 0.27, height: SH * 0.27, flexShrink: 0, cursor: "pointer",
+                    borderRadius: 6, overflow: "hidden",
+                    outline: safeActive === i ? `2.5px solid ${currentAccent}` : `1px solid ${T.border}`,
+                    position: "relative",
+                  }}>
+                    <div style={{ transform: `scale(0.27)`, transformOrigin: "top left", width: SW, height: SH, pointerEvents: "none" }}>{s}</div>
+                  </div>
+                )
               ))}
             </div>
           </div>
 
           {/* Download panel */}
           <div style={{ marginTop: 28, background: T.surface, border: `1px solid ${currentAccent}33`, borderRadius: 14, padding: "20px 22px" }}>
-            <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 6, color: currentAccent }}>📲 Export for Instagram</div>
-            <div style={{ fontSize: 11, color: T.muted, lineHeight: 1.6, marginBottom: 16, fontWeight: 500 }}>
-              Exports all {slides.length} slides as <strong style={{ color: T.white }}>1080×1080 px PNG</strong> files ready for an Instagram carousel. Downloads as a ZIP.
-            </div>
-            <DownloadButton slides={slides} template={template} accent={currentAccent} />
+            {template === "radarreel" ? (
+              <>
+                <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 6, color: currentAccent }}>🎬 Export Radar Reel</div>
+                <div style={{ fontSize: 11, color: T.muted, lineHeight: 1.6, marginBottom: 16, fontWeight: 500 }}>
+                  Exports {slides.length} vertical scenes as <strong style={{ color: T.white }}>1080×1920 px PNG</strong> files (9:16), named <code style={{ color: T.white, background: T.bg, border: `1px solid ${T.border}`, borderRadius: 4, padding: "1px 5px", fontSize: 10.5 }}>radar-reel-scene-1.png</code> … <code style={{ color: T.white, background: T.bg, border: `1px solid ${T.border}`, borderRadius: 4, padding: "1px 5px", fontSize: 10.5 }}>radar-reel-scene-5.png</code>. Independent from the carousel export.
+                </div>
+                <ReelDownloadButton slides={slides} accent={currentAccent} activeSlide={safeActive} />
+              </>
+            ) : (
+              <>
+                <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 6, color: currentAccent }}>📲 Export for Instagram</div>
+                <div style={{ fontSize: 11, color: T.muted, lineHeight: 1.6, marginBottom: 16, fontWeight: 500 }}>
+                  Exports all {slides.length} slides as <strong style={{ color: T.white }}>1080×1080 px PNG</strong> files ready for an Instagram carousel. Downloads as a ZIP.
+                </div>
+                <DownloadButton slides={slides} template={template} accent={currentAccent} />
+              </>
+            )}
           </div>
         </div>
       )}
@@ -1275,25 +2003,39 @@ export default function App() {
           {/* ── RADAR fields ── */}
           {template === "radar" && (
             <>
-              <SectionHead title="Cover" color="#f59e0b" />
-              <Field label="Week Label"  value={radarData.weekLabel}  onChange={v => updRadar("weekLabel", v)} />
-              <Field label="Ticker"      value={radarData.ticker}     onChange={v => updRadar("ticker", v)} />
-              <Field label="Sector"      value={radarData.sector || ""} onChange={v => updRadar("sector", v)} />
+              <SectionHead title="Cover (Slide 1 — Hook)" color="#f59e0b" />
+              <Field label="Ticker (kept secret until Slide 3)" value={radarData.ticker} onChange={v => updRadar("ticker", v)} />
               <Field label="Exchange"    value={radarData.exchange || ""} onChange={v => updRadar("exchange", v)} />
               <Field label="Timeframe"   value={radarData.timeframe || ""} onChange={v => updRadar("timeframe", v)} />
-              <Field label="Thesis (one-line)"  value={radarData.thesis || ""} onChange={v => updRadar("thesis", v)} multiline />
+              <SelectField
+                label="Hook Style (vary this across posts)"
+                value={radarData.hookVariant || "redacted"}
+                onChange={v => updRadar("hookVariant", v)}
+                options={[
+                  { value: "redacted", label: "Redacted ticker tiles (?????)" },
+                  { value: "chart",    label: "Mystery price-action bars" },
+                  { value: "stat",     label: "Big teaser stat" },
+                ]}
+              />
+              {radarData.hookVariant === "stat" && (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <div style={{ flex: 1 }}><Field label="Stat Value (e.g. 3.2x)" value={radarData.hookStat?.value || ""} onChange={v => updRadarHookStat("value", v)} /></div>
+                  <div style={{ flex: 2 }}><Field label="Stat Label" value={radarData.hookStat?.label || ""} onChange={v => updRadarHookStat("label", v)} /></div>
+                </div>
+              )}
+              <Field label="Hook Headline (the curiosity hook / question)" value={radarData.hookHeadline || ""} onChange={v => updRadar("hookHeadline", v)} multiline />
               <Field label="Subtitle"    value={radarData.subtitle}   onChange={v => updRadar("subtitle", v)} multiline />
-              <SectionHead title="Chart Slide" color="#f59e0b" />
+              <SectionHead title="Clues (Slide 2 — don't reveal the name!)" color="#f59e0b" />
+              {(radarData.clues || []).map((c, i) => (
+                <div key={i} style={{ display: "flex", gap: 6 }}>
+                  <div style={{ width: 56 }}><Field label="Icon" value={c.icon} onChange={v => updRadarClue(i, "icon", v)} /></div>
+                  <div style={{ flex: 1 }}><Field label="Hint text" value={c.text} onChange={v => updRadarClue(i, "text", v)} multiline /></div>
+                </div>
+              ))}
+              <SectionHead title="Chart Slide (Slide 3)" color="#f59e0b" />
               <Field label="Zone Status (e.g. ACTIVE BREAKOUT, WAIT FOR PULLBACK)" value={radarData.zone || ""} onChange={v => updRadar("zone", v)} />
               <Field label="Zone Colour (hex)" value={radarData.zoneColor || "#10b981"} onChange={v => updRadar("zoneColor", v)} />
-              {/* <SectionHead title="Why I'm Watching (Slide 1 bullets)" color="#f59e0b" />
-              {(radarData.watchReason || []).map((r, i) => (
-                <div key={i} style={{ display: "flex", gap: 6 }}>
-                  <Field label="Icon" value={r.icon} onChange={v => { const a=[...radarData.watchReason]; a[i]={...a[i],icon:v}; updRadar("watchReason",a); }} />
-                  <Field label="Text" value={r.text} onChange={v => { const a=[...radarData.watchReason]; a[i]={...a[i],text:v}; updRadar("watchReason",a); }} multiline />
-                </div>
-              ))} */}
-              <SectionHead title="Setup Points" color="#f59e0b" />
+              <SectionHead title="Setup Points (Slide 4)" color="#f59e0b" />
               {radarData.setupPoints.map((p, i) => (
                 <div key={i} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: 12, marginBottom: 10 }}>
                   <div style={{ fontSize: 10, color: "#f59e0b", fontWeight: 800, marginBottom: 8 }}>Point {i + 1}</div>
@@ -1380,6 +2122,77 @@ export default function App() {
               ))}
               <SectionHead title="Brand" color="#06b6d4" />
               <Field label="Brand Name" value={ccData.brand} onChange={v => updCc("brand", v)} />
+            </>
+          )}
+
+          {/* ── MARKET VIEWS fields ── */}
+          {template === "marketviews" && (
+            <>
+              <SectionHead title="Slide 1 — Statement (the scroll-stopper)" color="#ef4444" />
+              <Field label={`Bold Statement (use \\n to split lines — last line gets accent)`} value={mvData.statement} onChange={v => updMv("statement", v)} multiline />
+              <Field label="Subtext (optional — one punchy line)" value={mvData.statementSub || ""} onChange={v => updMv("statementSub", v)} multiline />
+
+              <SectionHead title="Slide 2 — Common Belief (tension setup)" color="#ef4444" />
+              <Field label="What most traders believe" value={mvData.commonBelief} onChange={v => updMv("commonBelief", v)} multiline />
+              <Field label="Tension Teaser (the cliffhanger that pulls to Slide 3)" value={mvData.tensionTeaser || ""} onChange={v => updMv("tensionTeaser", v)} multiline />
+
+              <SectionHead title="Slide 3 — Your View (conviction points)" color="#ef4444" />
+              {(mvData.viewPoints || []).map((pt, i) => (
+                <Field key={i} label={`Point ${i + 1}`} value={pt} onChange={v => updMvViewPoint(i, v)} multiline />
+              ))}
+              <Field label="Context Note (italic — the nuance beneath your view)" value={mvData.contextNote || ""} onChange={v => updMv("contextNote", v)} multiline />
+
+              <SectionHead title="Slide 4 — Question (drive comments)" color="#ef4444" />
+              <Field label={`Question (use \\n to split lines)`} value={mvData.question} onChange={v => updMv("question", v)} multiline />
+              <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ flex: 1 }}><Field label="Side A emoji" value={mvData.sideA?.emoji || "🔴"} onChange={v => updMvSideA("emoji", v)} /></div>
+                <div style={{ flex: 3 }}><Field label="Side A label" value={mvData.sideA?.label || "Agree"} onChange={v => updMvSideA("label", v)} /></div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ flex: 1 }}><Field label="Side B emoji" value={mvData.sideB?.emoji || "🟢"} onChange={v => updMvSideB("emoji", v)} /></div>
+                <div style={{ flex: 3 }}><Field label="Side B label" value={mvData.sideB?.label || "Disagree"} onChange={v => updMvSideB("label", v)} /></div>
+              </div>
+              <Field label="Closing Quote (optional — shows beneath the two camps)" value={mvData.closingQuote || ""} onChange={v => updMv("closingQuote", v)} multiline />
+
+              <SectionHead title="Brand" color="#ef4444" />
+              <Field label="Brand Name" value={mvData.brand} onChange={v => updMv("brand", v)} />
+            </>
+          )}
+
+          {/* ── RADAR REEL fields ── */}
+          {template === "radarreel" && (
+            <>
+              <SectionHead title="Scene 1 — Hook" color="#f59e0b" />
+              <Field label={`Headline (use \\n to split lines)`} value={radarReelData.title} onChange={v => updRadarReel("title", v)} multiline />
+              <Field label="Sub-headline" value={radarReelData.subheadline || ""} onChange={v => updRadarReel("subheadline", v)} multiline />
+              <Field label="Week Label (optional, e.g. WEEK OF JUN 14)" value={radarReelData.weekLabel || ""} onChange={v => updRadarReel("weekLabel", v)} />
+
+              <SectionHead title="Scene 2 — Stock 1" color="#f59e0b" />
+              <Field label="Ticker"        value={radarReelData.stock1Ticker}  onChange={v => updRadarReel("stock1Ticker", v)} />
+              <Field label="Company Name (optional)" value={radarReelData.stock1Company || ""} onChange={v => updRadarReel("stock1Company", v)} />
+              <Field label="Clue 1" value={radarReelData.stock1Clue1} onChange={v => updRadarReel("stock1Clue1", v)} multiline />
+              <Field label="Clue 2" value={radarReelData.stock1Clue2} onChange={v => updRadarReel("stock1Clue2", v)} multiline />
+              <Field label="Clue 3" value={radarReelData.stock1Clue3 || ""} onChange={v => updRadarReel("stock1Clue3", v)} multiline />
+
+              <SectionHead title="Scene 3 — Stock 2" color="#f59e0b" />
+              <Field label="Ticker"        value={radarReelData.stock2Ticker}  onChange={v => updRadarReel("stock2Ticker", v)} />
+              <Field label="Company Name (optional)" value={radarReelData.stock2Company || ""} onChange={v => updRadarReel("stock2Company", v)} />
+              <Field label="Clue 1" value={radarReelData.stock2Clue1} onChange={v => updRadarReel("stock2Clue1", v)} multiline />
+              <Field label="Clue 2" value={radarReelData.stock2Clue2} onChange={v => updRadarReel("stock2Clue2", v)} multiline />
+              <Field label="Clue 3" value={radarReelData.stock2Clue3 || ""} onChange={v => updRadarReel("stock2Clue3", v)} multiline />
+
+              <SectionHead title="Scene 4 — Stock 3" color="#f59e0b" />
+              <Field label="Ticker"        value={radarReelData.stock3Ticker}  onChange={v => updRadarReel("stock3Ticker", v)} />
+              <Field label="Company Name (optional)" value={radarReelData.stock3Company || ""} onChange={v => updRadarReel("stock3Company", v)} />
+              <Field label="Clue 1" value={radarReelData.stock3Clue1} onChange={v => updRadarReel("stock3Clue1", v)} multiline />
+              <Field label="Clue 2" value={radarReelData.stock3Clue2} onChange={v => updRadarReel("stock3Clue2", v)} multiline />
+              <Field label="Clue 3" value={radarReelData.stock3Clue3 || ""} onChange={v => updRadarReel("stock3Clue3", v)} multiline />
+
+              <SectionHead title="Scene 5 — CTA" color="#f59e0b" />
+              <Field label="CTA Card Text" value={radarReelData.ctaText} onChange={v => updRadarReel("ctaText", v)} multiline />
+
+              <SectionHead title="Brand" color="#f59e0b" />
+              <Field label="Brand Name" value={radarReelData.brand} onChange={v => updRadarReel("brand", v)} />
             </>
           )}
 
